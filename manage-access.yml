@@ -1,4 +1,4 @@
-# Configure Database Access
+# Database access
 - name: Configure secure access to the database
   hosts: db_servers
   become: yes
@@ -29,7 +29,7 @@
         owner: "{{ vault_db_user }}"
       become_user: postgres
 
-# Configure Application Services
+# Application services
 - name: Configure secure access to app services
   hosts: app_servers
   become: yes
