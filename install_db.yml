@@ -1,0 +1,22 @@
+- name: Install PostgreSQL Database
+  hosts: db_servers
+  become: yes
+  tasks:
+    - name: Install ACL (Required for Ansible user switching)
+      apt:
+        name: acl
+        state: present
+        update_cache: yes
+
+    - name: Install PostgreSQL
+      apt:
+        name: 
+          - postgresql
+          - postgresql-contrib
+        state: present
+
+    - name: Ensure PostgreSQL service is running
+      service:
+        name: postgresql
+        state: started
+        enabled: yes

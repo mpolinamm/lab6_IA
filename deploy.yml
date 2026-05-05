@@ -1,0 +1,55 @@
+- name: Deploy .NET application artifact
+  hosts: app_servers
+  become: yes
+  vars_files:
+    - secrets.yml
+  tasks:
+    - name: Step 1 - Make sure we have the decompression tool
+      apt:
+        name: unzip
+        state: present
+        
+    - name: Step 2 - Create a clean directory for our application
+      file:
+        path: /var/www/backend
+        state: directory
+        mode: '0755'
+        
+    - name: Step 3 - Download and unpack the ready artifact (.zip)
+      unarchive:
+        src: http://edu.balsamski.pl/Code.zip
+        dest: /var/www/backend
+        remote_src: yes
+        
+    - name: Step 4 - Configure the systemd daemon for the .NET application
+      copy:
+        dest: /etc/systemd/system/backend.service
+        content: |
+          [Unit]
+          Description=Main .NET application of my project
+          After=network.target
+          [Service]
+          WorkingDirectory=/var/www/backend/Code/Backend
+          ExecStart=/usr/share/dotnet/dotnet /var/www/backend/Code/Backend/Backend.dll
+          Restart=always
+          RestartSec=10
+          SyslogIdentifier=backend_logs
+          Environment="ASPNETCORE_ENVIRONMENT=Production"
+          Environment="ASPNETCORE_URLS=http://localhost:5000"
+          Environment="ConnectionStrings__Postgres=Host={{ vault_db_host }};Database={{ vault_db_name }};Username={{ vault_db_user }};Password={{ vault_db_password }}"
+          Environment="ConnectionStrings__Redis=localhost,password={{ vault_redis_password }}"
+          Environment="ConnectionStrings__RabbitMq=amqp://{{ vault_rabbit_user }}:{{ vault_rabbit_password }}@localhost:5672/"
+          Environment="Minio__Endpoint={{ vault_minio_endpoint }}"
+          Environment="Minio__RootUser={{ vault_minio_root_user }}"
+          Environment="Minio__RootPassword={{ vault_minio_root_password }}"
+          Environment="Minio__BucketName={{ vault_minio_bucket_name }}"
+          Environment="Cors__AllowedOrigins={{ vault_cors_origins }}"
+          [Install]
+          WantedBy=multi-user.target
+          
+    - name: Step 5 - Start the application in the background
+      systemd:
+        name: backend
+        state: restarted 
+        enabled: yes
+        daemon_reload: yes
